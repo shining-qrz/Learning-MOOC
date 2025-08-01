@@ -13,7 +13,7 @@ public class CourseController {
     @PostMapping("/course/list")
     public Result getCourseByPage(@RequestParam Integer pageNum,
                                   @RequestParam Integer pageSize,
-                                  @RequestBody CourseQueryDTO courseQueryDTO) {
+                                  @RequestBody(required = false) CourseQueryDTO courseQueryDTO) {
 
         return Result.ok();
     }
