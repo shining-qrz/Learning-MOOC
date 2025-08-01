@@ -21,7 +21,6 @@
 
     <modules>
         <module>content</module>
-        <module>content</module>
     </modules>
 
     <dependencies>
@@ -81,7 +80,7 @@
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
-            <version>3.4.3</version>
+            <version>3.5.12</version>
         </dependency>
 
     </dependencies>
