@@ -8,3 +8,10 @@ spring:
             - Path=/api/services/content/**
           filters:
             - RewritePath=/api/services/content/?(?<segment>.*), /$\{segment}
+
+        - id: service-system
+          uri: lb://service-system
+          predicates:
+            - Path=/api/services/system/**
+          filters:
+            - RewritePath=/api/services/system/?(?<segment>.*), /$\{segment}

@@ -1,5 +1,6 @@
 package edu.wust.qrz.entity.content;
 
+import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -15,6 +16,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 @TableName("course_category")
 public class CourseCategory implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**

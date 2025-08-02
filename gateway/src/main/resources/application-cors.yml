@@ -1,0 +1,9 @@
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+            '[/**]':
+                allowedOrigins: 'http://localhost/api/services/system/dictionary/all'
+                allowedMethods:
+                - GET

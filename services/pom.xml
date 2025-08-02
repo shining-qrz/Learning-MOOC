@@ -21,6 +21,7 @@
 
     <modules>
         <module>content</module>
+        <module>system</module>
     </modules>
 
     <dependencies>
