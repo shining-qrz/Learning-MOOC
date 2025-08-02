@@ -1,5 +1,6 @@
 package edu.wust.qrz.service.Impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.wust.qrz.common.Result;
@@ -26,6 +27,27 @@ public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseB
             return Result.ok(courseBasePage);
         }
 
-        return Result.ok();
+        QueryWrapper<CourseBase> queryWrapper = getCourseBaseQueryWrapper(courseQueryDTO);
+
+        Page<CourseBase> result = page(page, queryWrapper);
+
+        return Result.ok(result);
+    }
+
+    private QueryWrapper<CourseBase> getCourseBaseQueryWrapper(CourseQueryDTO courseQueryDTO) {
+        QueryWrapper<CourseBase> queryWrapper = new QueryWrapper<>();
+
+        if (courseQueryDTO.getCourseName() != null && !courseQueryDTO.getCourseName().isEmpty()) {
+            queryWrapper.like("name", courseQueryDTO.getCourseName());
+        }
+
+        if (courseQueryDTO.getAuditStatus() != null && !courseQueryDTO.getAuditStatus().isEmpty()) {
+            queryWrapper.eq("audit_status", courseQueryDTO.getAuditStatus());
+        }
+
+        if (courseQueryDTO.getPublishStatus() != null && !courseQueryDTO.getPublishStatus().isEmpty()) {
+            queryWrapper.eq("status", courseQueryDTO.getPublishStatus());
+        }
+        return queryWrapper;
     }
 }
