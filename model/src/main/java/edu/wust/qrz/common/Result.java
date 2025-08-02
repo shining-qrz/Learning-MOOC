@@ -11,7 +11,7 @@ public class Result {
     public static Result ok(){
         Result result = new Result();
         result.setCode(200);
-        result.setMsg("响应成功");
+        result.setMsg("请求成功");
         return result;
     }
 
@@ -19,6 +19,12 @@ public class Result {
         Result result = new Result();
         result.setCode(200);
         result.setMsg(msg);
+        result.setData(data);
+        return result;
+    }
+
+    public static Result ok(Object data){
+        Result result = ok();
         result.setData(data);
         return result;
     }
