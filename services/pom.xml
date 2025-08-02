@@ -77,9 +77,15 @@
             <version>1.2.6</version>
         </dependency>
 
+        <!--Mybatis-Plus-->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <version>3.5.12</version>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-core</artifactId>
             <version>3.5.12</version>
         </dependency>
 
