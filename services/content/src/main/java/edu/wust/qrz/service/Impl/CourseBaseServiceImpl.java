@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.wust.qrz.entity.content.CourseBase;
 import edu.wust.qrz.mapper.CourseBaseMapper;
 import edu.wust.qrz.service.CourseBaseService;
+import org.springframework.stereotype.Service;
 
+@Service
 public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseBase> implements CourseBaseService {
 }
