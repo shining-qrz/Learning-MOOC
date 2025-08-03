@@ -13,6 +13,10 @@ public class CourseCategoryController {
     @Resource
     private CourseCategoryService courseCategoryService;
 
+    /**
+     * 获取课程分类树形结构
+     * @return Result对象，包含分类树形结构
+     */
     @GetMapping("tree-nodes")
     public Result getCategoryByTree() {
         return courseCategoryService.getCategoryByTree();

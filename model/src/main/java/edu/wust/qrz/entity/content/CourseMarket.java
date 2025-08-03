@@ -1,6 +1,9 @@
 package edu.wust.qrz.entity.content;
 
+import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
+
 import lombok.Data;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -15,6 +18,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 @TableName("course_market")
 public class CourseMarket implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
@@ -30,12 +34,12 @@ public class CourseMarket implements Serializable {
     /**
      * 现价
      */
-    private Float price;
+    private BigDecimal price;
 
     /**
      * 原价
      */
-    private Float originalPrice;
+    private BigDecimal originalPrice;
 
     /**
      * 咨询qq

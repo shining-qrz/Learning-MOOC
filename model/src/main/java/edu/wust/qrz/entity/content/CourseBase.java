@@ -2,6 +2,8 @@ package edu.wust.qrz.entity.content;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+
+import java.io.Serial;
 import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -20,6 +22,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 @TableName("course_base")
 public class CourseBase implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
