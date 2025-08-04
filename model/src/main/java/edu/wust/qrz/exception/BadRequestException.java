@@ -1,4 +1,4 @@
-package edu.wust.qrz.handler;
+package edu.wust.qrz.exception;
 
 /**
  * 自定义异常类，用于处理请求参数错误

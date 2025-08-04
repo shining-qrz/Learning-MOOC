@@ -1,6 +1,8 @@
 package edu.wust.qrz.handler;
 
 import edu.wust.qrz.common.Result;
+import edu.wust.qrz.exception.BadRequestException;
+import edu.wust.qrz.exception.DatabaseOperateException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

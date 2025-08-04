@@ -3,10 +3,14 @@ package edu.wust.qrz.service.Impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.wust.qrz.common.Result;
+import edu.wust.qrz.dto.content.TeachPlanDTO;
+import edu.wust.qrz.entity.content.CourseBase;
 import edu.wust.qrz.entity.content.Teachplan;
 import edu.wust.qrz.entity.content.TeachplanMedia;
-import edu.wust.qrz.handler.BadRequestException;
+import edu.wust.qrz.exception.BadRequestException;
+import edu.wust.qrz.exception.DatabaseOperateException;
 import edu.wust.qrz.mapper.TeachplanMapper;
+import edu.wust.qrz.service.CourseBaseService;
 import edu.wust.qrz.service.TeachPlanMediaService;
 import edu.wust.qrz.service.TeachPlanService;
 import edu.wust.qrz.vo.content.TeachPlanVO;
@@ -14,6 +18,7 @@ import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -25,6 +30,9 @@ public class TeachPlanServiceImpl extends ServiceImpl<TeachplanMapper, Teachplan
 
     @Resource
     TeachPlanMediaService teachPlanMediaService;
+
+    @Resource
+    CourseBaseService courseBaseService;
 
     @Override
     public Result getTeachPlanTreeNodes(Long courseId) {
@@ -66,6 +74,40 @@ public class TeachPlanServiceImpl extends ServiceImpl<TeachplanMapper, Teachplan
         //根据order属性对结果进行排序
         sortTeachPlanVOList(results);
         return Result.ok(results);
+    }
+
+    @Override
+    public Result createTeachPlan(TeachPlanDTO teachPlanDTO) {
+        CourseBase courseBase = courseBaseService.getById(teachPlanDTO.getCourseId());
+        if(courseBase == null) {
+            throw new BadRequestException("课程不存在");
+        }
+
+        QueryWrapper<Teachplan> parentIdWrapper = new QueryWrapper<>();
+        parentIdWrapper.eq("parentid", teachPlanDTO.getParentid());
+        long parentCount = count(parentIdWrapper);
+        if(parentCount==0)
+            throw new BadRequestException("父节点ID不存在");
+
+        Teachplan teachplan = new Teachplan();
+        BeanUtils.copyProperties(teachPlanDTO, teachplan);
+        teachplan.setStatus(1);
+        teachplan.setCreateDate(LocalDateTime.now());
+
+        //将新增章节排序至最后
+        QueryWrapper<Teachplan> orderWrapper = new QueryWrapper<Teachplan>()
+                .eq("grade", teachPlanDTO.getGrade())
+                .eq("course_id", teachPlanDTO.getCourseId())
+                .eq("parentid", teachPlanDTO.getParentid());
+        long count = count(orderWrapper);
+        teachplan.setOrderby((int) count + 1);
+
+        boolean success = save(teachplan);
+        if(!success) {
+            throw new DatabaseOperateException("新增教学计划失败");
+        }
+
+        return Result.ok("添加教学计划成功");
     }
 
 

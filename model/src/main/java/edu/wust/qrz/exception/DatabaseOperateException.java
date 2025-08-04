@@ -1,4 +1,4 @@
-package edu.wust.qrz.handler;
+package edu.wust.qrz.exception;
 
 public class DatabaseOperateException extends RuntimeException{
     public DatabaseOperateException(String message) {
