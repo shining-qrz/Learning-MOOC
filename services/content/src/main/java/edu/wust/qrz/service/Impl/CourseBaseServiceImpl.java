@@ -4,27 +4,23 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.wust.qrz.common.Result;
-import edu.wust.qrz.constant.DataDictionaryConstant;
 import edu.wust.qrz.dto.content.CourseCreateDTO;
 import edu.wust.qrz.dto.content.CourseQueryDTO;
 import edu.wust.qrz.entity.content.CourseBase;
 import edu.wust.qrz.entity.content.CourseMarket;
 import edu.wust.qrz.handler.BadRequestException;
+import edu.wust.qrz.handler.DatabaseOperateException;
 import edu.wust.qrz.mapper.CourseBaseMapper;
 import edu.wust.qrz.service.CourseBaseService;
 import edu.wust.qrz.service.CourseMarketService;
 import edu.wust.qrz.vo.content.CourseVO;
 import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
-import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 
 import static edu.wust.qrz.constant.DataDictionaryConstant.*;
 
@@ -58,24 +54,8 @@ public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseB
     @Transactional
     @Override
     public Result createCourse(Long companyId, CourseCreateDTO courseCreateDTO) {
-        //校验课程收费参数
-        if(!(courseCreateDTO.getCharge().equals(COURSE_CHARGE_TRUE) ||
-                courseCreateDTO.getCharge().equals(COURSE_CHARGE_FALSE))){
-            throw new BadRequestException("课程收费参数错误");
-        }
-
-        //校验课程等级参数
-        if(!(courseCreateDTO.getGrade().equals(COURSE_GRADE_BEGINNER) ||
-                courseCreateDTO.getGrade().equals(COURSE_GRADE_INTERMEDIATE) ||
-                courseCreateDTO.getGrade().equals(COURSE_GRADE_ADVANCED))){
-            throw new BadRequestException("课程等级参数错误");
-        }
-
-        //校验课程教学模式
-        if(!(courseCreateDTO.getTeachmode().equals(COURSE_MODE_RECORD) ||
-                courseCreateDTO.getTeachmode().equals(COURSE_MODE_LIVE))){
-            throw new BadRequestException("课程教学模式参数错误");
-        }
+        //校验参数
+        paramValidate(courseCreateDTO);
 
         //保存课程基本信息
         CourseBase courseBase = new CourseBase();
@@ -116,6 +96,7 @@ public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseB
         return Result.ok();
     }
 
+
     @Override
     public Result getCourseById(Long courseId) {
         if (courseId == null || courseId <= 0) {
@@ -148,7 +129,66 @@ public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseB
         return Result.ok(courseVO);
     }
 
+    @Override
+    public Result updateCourse(Long courseId, Long companyId, CourseCreateDTO courseCreateDTO) {
+        boolean success;
+        //校验参数
+        paramValidate(courseCreateDTO);
 
+        //修改权限校验
+        CourseBase courseBaseFromDB = getById(courseId);
+        if (courseBaseFromDB == null) {
+            throw new BadRequestException("课程不存在");
+        } else if (!courseBaseFromDB.getCompanyId().equals(companyId)) {
+            throw new BadRequestException("无权修改");
+        }
+
+        //更新CourseBase
+        CourseBase courseBase = new CourseBase();
+        BeanUtils.copyProperties(courseCreateDTO, courseBase);
+        courseBase.setId(courseId);
+        courseBase.setChangeDate(LocalDateTime.now());
+        success = updateById(courseBase);
+        if(!success) {
+            throw new DatabaseOperateException("更新课程基本信息失败");
+        }
+
+        //若课程免费
+        if (courseCreateDTO.getCharge().equals(COURSE_CHARGE_FALSE)) {
+            CourseMarket courseMarketFromDB = courseMarketService.getById(courseId);
+            //若原课程收费
+            if (courseMarketFromDB != null) {
+                //删除原有记录
+                success = courseMarketService.removeById(courseId);
+                if (!success) {
+                    throw new DatabaseOperateException("删除课程营销信息失败");
+                }
+            }
+        }
+
+        //若课程收费
+        if (courseCreateDTO.getCharge().equals(COURSE_CHARGE_TRUE)) {
+            CourseMarket courseMarket = new CourseMarket();
+            BeanUtils.copyProperties(courseCreateDTO, courseMarket);
+            courseMarket.setId(courseId);
+
+            CourseMarket courseMarketFromDB = courseMarketService.getById(courseId);
+            //若原为免费课程，则创建新记录
+            if (courseMarketFromDB == null) {
+                courseMarket.setId(courseId);
+                success = courseMarketService.save(courseMarket);
+                if (!success)
+                    throw new DatabaseOperateException("更新课程营销信息失败");
+            } else {
+                //若原为收费课程，则更新记录
+                success = courseMarketService.updateById(courseMarket);
+                if (!success)
+                    throw new DatabaseOperateException("更新课程营销信息失败"); // 保持原有创建时间
+            }
+        }
+
+        return Result.ok("课程更新成功");
+    }
 
 
     private QueryWrapper<CourseBase> getCourseBaseQueryWrapper(CourseQueryDTO courseQueryDTO) {
@@ -166,5 +206,26 @@ public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseB
             queryWrapper.eq("status", courseQueryDTO.getPublishStatus());
         }
         return queryWrapper;
+    }
+
+    private static void paramValidate(CourseCreateDTO courseCreateDTO) {
+        //校验课程收费参数
+        if(!(courseCreateDTO.getCharge().equals(COURSE_CHARGE_TRUE) ||
+                courseCreateDTO.getCharge().equals(COURSE_CHARGE_FALSE))){
+            throw new BadRequestException("课程收费参数错误");
+        }
+
+        //校验课程等级参数
+        if(!(courseCreateDTO.getGrade().equals(COURSE_GRADE_BEGINNER) ||
+                courseCreateDTO.getGrade().equals(COURSE_GRADE_INTERMEDIATE) ||
+                courseCreateDTO.getGrade().equals(COURSE_GRADE_ADVANCED))){
+            throw new BadRequestException("课程等级参数错误");
+        }
+
+        //校验课程教学模式
+        if(!(courseCreateDTO.getTeachmode().equals(COURSE_MODE_RECORD) ||
+                courseCreateDTO.getTeachmode().equals(COURSE_MODE_LIVE))){
+            throw new BadRequestException("课程教学模式参数错误");
+        }
     }
 }

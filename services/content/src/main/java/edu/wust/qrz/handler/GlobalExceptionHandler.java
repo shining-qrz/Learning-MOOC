@@ -58,6 +58,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理数据库操作异常
+     * @param e
+     * @return
+     */
+    @ExceptionHandler(DatabaseOperateException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Result handleDatabaseOperateException(DatabaseOperateException e){
+        log.error("数据库操作异常抛出，{}", e.getMessage());
+        return Result.fail("数据库操作异常：" + e.getMessage());
+    }
+
+    /**
      * 处理其他未知异常
      * @param e 顶层异常
      * @return Result对象，包含错误信息

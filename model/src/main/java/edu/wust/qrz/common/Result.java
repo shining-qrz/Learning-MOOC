@@ -1,6 +1,8 @@
 package edu.wust.qrz.common;
 
 import lombok.Data;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @Data
 public class Result {
@@ -15,10 +17,15 @@ public class Result {
         return result;
     }
 
-    public static Result ok(String msg, Object data){
+    public static Result ok(String msg){
         Result result = new Result();
         result.setCode(200);
         result.setMsg(msg);
+        return result;
+    }
+
+    public static Result ok(String msg, Object data){
+        Result result = ok(msg);
         result.setData(data);
         return result;
     }
@@ -42,6 +49,7 @@ public class Result {
         result.setMsg(msg);
         return result;
     }
+
 
     public static Result fail(Integer code, String msg){
         Result result = new Result();

@@ -56,4 +56,18 @@ public class CourseBaseController {
         return courseBaseService.getCourseById(courseId);
     }
 
+    /**
+     * 更新课程信息
+     * @param courseId 课程ID
+     * @param companyId 机构ID
+     * @param courseCreateDTO 课程创建数据传输对象
+     * @return Result对象
+     */
+    @PatchMapping("/{courseId}")
+    public Result updateCourse(@PathVariable Long courseId,
+                               @RequestParam Long companyId,
+                               @Valid @RequestBody CourseCreateDTO courseCreateDTO) {
+        return courseBaseService.updateCourse(courseId, companyId, courseCreateDTO);
+    }
+
 }
