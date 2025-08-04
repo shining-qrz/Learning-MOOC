@@ -6,6 +6,7 @@ import edu.wust.qrz.entity.content.CourseCategory;
 import edu.wust.qrz.mapper.CourseCategoryMapper;
 import edu.wust.qrz.service.CourseCategoryService;
 import edu.wust.qrz.vo.content.CourseCategoryTreeVO;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -22,10 +23,11 @@ public class CourseCategoryServiceImpl extends ServiceImpl<CourseCategoryMapper,
         List<CourseCategory> courseCategories = list();
 
         Map<String, CourseCategoryTreeVO> voMap = courseCategories.stream()
-                .map(courseCategory ->
-                        new CourseCategoryTreeVO(courseCategory.getId(),
-                                courseCategory.getName(),
-                                courseCategory.getParentid()))
+                .map(courseCategory -> {
+                        CourseCategoryTreeVO courseCategoryTreeVO = new CourseCategoryTreeVO();
+                            BeanUtils.copyProperties(courseCategory, courseCategoryTreeVO);
+                            return courseCategoryTreeVO;
+                })
                 .collect(Collectors.toMap(CourseCategoryTreeVO::getId, courseCategoryTreeVO -> courseCategoryTreeVO));
 
         ArrayList<CourseCategoryTreeVO> courseCategoryTreeVOList = new ArrayList<>();

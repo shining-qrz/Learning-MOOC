@@ -129,6 +129,7 @@ public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseB
         return Result.ok(courseVO);
     }
 
+    @Transactional
     @Override
     public Result updateCourse(Long courseId, Long companyId, CourseCreateDTO courseCreateDTO) {
         boolean success;

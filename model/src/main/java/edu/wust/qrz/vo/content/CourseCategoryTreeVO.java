@@ -18,10 +18,7 @@ public class CourseCategoryTreeVO {
     private Integer orderby; // 排序字段
     private String parentid; // 父节点ID
 
-    public CourseCategoryTreeVO(String id, String name, String parentid){
+    public CourseCategoryTreeVO(){
         this.children = new ArrayList<>();
-        this.id = id;
-        this.name = name;
-        this.parentid = parentid;
     }
 }
