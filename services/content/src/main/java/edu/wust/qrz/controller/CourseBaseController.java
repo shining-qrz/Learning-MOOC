@@ -6,10 +6,15 @@ import edu.wust.qrz.dto.content.CourseQueryDTO;
 import edu.wust.qrz.service.CourseBaseService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/course")
+@Validated
 public class CourseBaseController {
 
     @Resource
@@ -36,7 +41,7 @@ public class CourseBaseController {
      * @return Result对象
      */
     @PostMapping
-    public Result createCourse(@RequestParam Long companyId,
+    public Result createCourse(@NotNull(message = "机构Id为空") @RequestParam Long companyId,
                                @Valid @RequestBody CourseCreateDTO courseCreateDTO){
         return courseBaseService.createCourse(companyId,courseCreateDTO);
     }
