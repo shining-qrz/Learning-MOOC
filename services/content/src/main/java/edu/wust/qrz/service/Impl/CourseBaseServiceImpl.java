@@ -8,14 +8,19 @@ import edu.wust.qrz.dto.content.CourseCreateDTO;
 import edu.wust.qrz.dto.content.CourseQueryDTO;
 import edu.wust.qrz.entity.content.CourseBase;
 import edu.wust.qrz.entity.content.CourseMarket;
+import edu.wust.qrz.entity.content.CourseTeacher;
+import edu.wust.qrz.entity.content.Teachplan;
 import edu.wust.qrz.exception.BadRequestException;
 import edu.wust.qrz.exception.DatabaseOperateException;
 import edu.wust.qrz.mapper.CourseBaseMapper;
 import edu.wust.qrz.service.CourseBaseService;
 import edu.wust.qrz.service.CourseMarketService;
+import edu.wust.qrz.service.CourseTeacherService;
+import edu.wust.qrz.service.TeachPlanService;
 import edu.wust.qrz.vo.content.CourseVO;
 import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,8 +32,15 @@ import static edu.wust.qrz.constant.DataDictionaryConstant.*;
 @Service
 public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseBase> implements CourseBaseService {
 
+
     @Resource
     CourseMarketService courseMarketService;
+
+    @Resource
+    private CourseTeacherService courseTeacherService;
+
+    @Resource
+    private TeachPlanService teachPlanService;
 
     @Override
     public Result getCourseByPage(Integer pageNum, Integer pageSize, CourseQueryDTO courseQueryDTO) {
@@ -189,6 +201,43 @@ public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseB
         }
 
         return Result.ok("课程更新成功");
+    }
+
+    @Transactional
+    @Override
+    public Result deleteCourse(Long id) {
+        //id校验
+        QueryWrapper<CourseBase> courseBaseQueryWrapper = new QueryWrapper<>();
+        courseBaseQueryWrapper.eq("id", id)
+                .eq("audit_status", COURSE_AUDIT_NOT_SUBMIT);
+        long count = count(courseBaseQueryWrapper);
+        if(count<1) {
+            throw new BadRequestException("课程不存在或课程已提交审核，无法删除");
+        }
+
+        boolean success = true;
+
+        //删除课程基本信息
+        success = removeById(id);
+        if (!success) {
+            throw new DatabaseOperateException("删除课程基本信息失败");
+        }
+
+        //删除课程营销信息
+        courseMarketService.removeById(id);
+
+
+        //删除课程计划信息
+        QueryWrapper<Teachplan> teachplanQueryWrapper = new QueryWrapper<>();
+        teachplanQueryWrapper.eq("course_id", id);
+        teachPlanService.remove(teachplanQueryWrapper);
+
+        //删除课程教师信息
+        QueryWrapper<CourseTeacher> courseTeacherQueryWrapper = new QueryWrapper<>();
+        courseTeacherQueryWrapper.eq("course_id", id);
+        courseTeacherService.remove(courseTeacherQueryWrapper);
+
+        return Result.ok("课程删除成功");
     }
 
 

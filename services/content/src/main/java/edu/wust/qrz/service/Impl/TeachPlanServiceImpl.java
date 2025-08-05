@@ -16,6 +16,7 @@ import edu.wust.qrz.service.TeachPlanService;
 import edu.wust.qrz.vo.content.TeachPlanVO;
 import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ public class TeachPlanServiceImpl extends ServiceImpl<TeachplanMapper, Teachplan
     @Resource
     TeachPlanMediaService teachPlanMediaService;
 
+    @Lazy
     @Resource
     CourseBaseService courseBaseService;
 

@@ -15,4 +15,6 @@ public interface CourseBaseService extends IService<CourseBase> {
     Result getCourseById(Long courseId);
 
     Result updateCourse(Long courseId, Long companyId, @Valid CourseCreateDTO courseCreateDTO);
+
+    Result deleteCourse(Long id);
 }

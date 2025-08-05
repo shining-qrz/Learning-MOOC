@@ -70,4 +70,8 @@ public class CourseBaseController {
         return courseBaseService.updateCourse(courseId, companyId, courseCreateDTO);
     }
 
+    @DeleteMapping("/{id}")
+    public Result deleteCourse(@PathVariable("id") Long id) {
+        return courseBaseService.deleteCourse(id);
+    }
 }
