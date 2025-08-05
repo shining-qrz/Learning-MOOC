@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
+import com.baomidou.mybatisplus.annotation.TableId;
 import lombok.Data;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -24,6 +25,7 @@ public class CourseMarket implements Serializable {
     /**
      * 主键，课程id
      */
+    @TableId(value = "id")
     private Long id;
 
     /**

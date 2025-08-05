@@ -185,19 +185,10 @@ public class CourseBaseServiceImpl extends ServiceImpl<CourseBaseMapper, CourseB
             BeanUtils.copyProperties(courseCreateDTO, courseMarket);
             courseMarket.setId(courseId);
 
-            CourseMarket courseMarketFromDB = courseMarketService.getById(courseId);
-            //若原为免费课程，则创建新记录
-            if (courseMarketFromDB == null) {
-                courseMarket.setId(courseId);
-                success = courseMarketService.save(courseMarket);
-                if (!success)
-                    throw new DatabaseOperateException("更新课程营销信息失败");
-            } else {
-                //若原为收费课程，则更新记录
-                success = courseMarketService.updateById(courseMarket);
-                if (!success)
-                    throw new DatabaseOperateException("更新课程营销信息失败"); // 保持原有创建时间
-            }
+            //若原课程免费，新增课程营销信息；若原课程收费，更新课程营销信息
+            boolean isSuccess = courseMarketService.saveOrUpdate(courseMarket);
+            if(!isSuccess)
+                throw new DatabaseOperateException("保存或更新课程营销信息失败");
         }
 
         return Result.ok("课程更新成功");
