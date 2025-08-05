@@ -10,4 +10,12 @@ public interface TeachPlanService extends IService<Teachplan> {
     Result getTeachPlanTreeNodes(Long courseId);
 
     Result createTeachPlan(@Valid TeachPlanDTO teachPlanDTO);
+
+    Result updateTeachPlan(@Valid TeachPlanDTO teachPlanDTO);
+
+    Result deleteTeachPlan(Long id);
+
+    Result moveUpTeachPlan(Long id);
+
+    Result moveDownTeachPlan(Long id);
 }

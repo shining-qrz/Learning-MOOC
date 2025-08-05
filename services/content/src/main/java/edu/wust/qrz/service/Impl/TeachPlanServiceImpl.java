@@ -17,6 +17,7 @@ import edu.wust.qrz.vo.content.TeachPlanVO;
 import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -24,6 +25,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static edu.wust.qrz.constant.DataDictionaryConstant.COURSE_AUDIT_NOT_SUBMIT;
 
 @Service
 public class TeachPlanServiceImpl extends ServiceImpl<TeachplanMapper, Teachplan> implements TeachPlanService {
@@ -83,11 +86,14 @@ public class TeachPlanServiceImpl extends ServiceImpl<TeachplanMapper, Teachplan
             throw new BadRequestException("课程不存在");
         }
 
-        QueryWrapper<Teachplan> parentIdWrapper = new QueryWrapper<>();
-        parentIdWrapper.eq("parentid", teachPlanDTO.getParentid());
-        long parentCount = count(parentIdWrapper);
-        if(parentCount==0)
-            throw new BadRequestException("父节点ID不存在");
+
+        if (teachPlanDTO.getParentid() != 0) {
+            QueryWrapper<Teachplan> parentIdWrapper = new QueryWrapper<>();
+            parentIdWrapper.eq("id", teachPlanDTO.getParentid());
+            long parentCount = count(parentIdWrapper);
+            if(parentCount==0)
+                throw new BadRequestException("父节点ID不存在");
+        }
 
         Teachplan teachplan = new Teachplan();
         BeanUtils.copyProperties(teachPlanDTO, teachplan);
@@ -108,6 +114,144 @@ public class TeachPlanServiceImpl extends ServiceImpl<TeachplanMapper, Teachplan
         }
 
         return Result.ok("添加教学计划成功");
+    }
+
+    @Override
+    public Result updateTeachPlan(TeachPlanDTO teachPlanDTO) {
+        //参数校验
+        QueryWrapper<Teachplan> teachplanQueryWrapper = new QueryWrapper<>();
+        teachplanQueryWrapper.eq("id", teachPlanDTO.getId())
+                .eq("course_id", teachPlanDTO.getCourseId())
+                .eq("grade", teachPlanDTO.getGrade())
+                .eq("parentid", teachPlanDTO.getParentid());
+        Teachplan teachplan = getOne(teachplanQueryWrapper);
+        if(teachplan == null)
+            throw new BadRequestException("请求参数错误");
+
+        BeanUtils.copyProperties(teachPlanDTO, teachplan);
+        teachplan.setChangeDate(LocalDateTime.now());
+        boolean success = updateById(teachplan);
+        if(!success)
+            throw new DatabaseOperateException("请求计划更新失败");
+
+        return Result.ok("更新成功");
+    }
+
+    @Transactional
+    @Override
+    public Result deleteTeachPlan(Long id) {
+        //参数校验
+        Teachplan teachplan = getById(id);
+        if(teachplan == null) {
+            throw new BadRequestException("教学计划不存在");
+        }
+
+        //课程未提交校验
+        QueryWrapper<CourseBase> courseBaseQueryWrapper = new QueryWrapper<>();
+        courseBaseQueryWrapper.eq("id", teachplan.getCourseId())
+                .eq("audit_status", COURSE_AUDIT_NOT_SUBMIT);
+        CourseBase courseBase = courseBaseService.getOne(courseBaseQueryWrapper);
+        if(courseBase == null) {
+            throw new BadRequestException("课程不存在或课程已提交审核，无法删除教学计划");
+        }
+
+        //章节空校验
+        Integer grade = teachplan.getGrade();
+        if(grade == 1) {
+            QueryWrapper<Teachplan> childQueryWrapper = new QueryWrapper<>();
+            childQueryWrapper.eq("parentid", id);
+            long count = count(childQueryWrapper);
+            if(count > 0) {
+                throw new BadRequestException("章节下存在子章节，无法删除");
+            }
+        }
+
+        //删除教学计划
+        boolean success = removeById(id);
+        if(!success) {
+            throw new DatabaseOperateException("删除教学计划失败");
+        }
+
+        //删除关联的教学计划媒体
+        if(grade == 2){
+            QueryWrapper<TeachplanMedia> teachplanMediaQueryWrapper = new QueryWrapper<>();
+            teachplanMediaQueryWrapper.eq("teachplan_id", id);
+            teachPlanMediaService.remove(teachplanMediaQueryWrapper);
+        }
+
+        return Result.ok("删除教学计划成功");
+
+    }
+
+    @Transactional
+    @Override
+    public Result moveUpTeachPlan(Long id) {
+        //参数校验
+        Teachplan teachplan = getById(id);
+        if(teachplan == null) {
+            throw new BadRequestException("教学计划不存在");
+        }
+
+        //获取上一个章节/小节
+        QueryWrapper<Teachplan> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("course_id", teachplan.getCourseId())
+                .eq("grade", teachplan.getGrade())
+                .eq("parentid", teachplan.getParentid())
+                .lt("orderby", teachplan.getOrderby())
+                .orderByDesc("orderby")
+                .last("limit 1");
+        Teachplan previousTeachPlan = getOne(queryWrapper);
+        if(previousTeachPlan == null) {
+            throw new BadRequestException("当前章节/小节已是最前面，无法上移");
+        }
+
+        //交换顺序
+        return exchangeOrder(teachplan, previousTeachPlan, 0);
+    }
+
+    @Override
+    public Result moveDownTeachPlan(Long id) {
+        //参数校验
+        Teachplan teachplan = getById(id);
+        if(teachplan == null) {
+            throw new BadRequestException("教学计划不存在");
+        }
+
+        //获取下一个章节/小节
+        QueryWrapper<Teachplan> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("course_id", teachplan.getCourseId())
+                .eq("grade", teachplan.getGrade())
+                .eq("parentid", teachplan.getParentid())
+                .gt("orderby", teachplan.getOrderby())
+                .orderByAsc("orderby")
+                .last("limit 1");
+        Teachplan downTeachPlan = getOne(queryWrapper);
+        if(downTeachPlan == null) {
+            throw new BadRequestException("当前章节/小节已是最前面，无法下移");
+        }
+
+        //交换顺序
+        return exchangeOrder(teachplan, downTeachPlan, 1);
+    }
+
+    private Result exchangeOrder(Teachplan originTeachplan, Teachplan targetTeachplan, Integer type) {
+        //type = 0表示上移，type = 1表示下移
+        int tempOrderby = originTeachplan.getOrderby();
+        originTeachplan.setOrderby(targetTeachplan.getOrderby());
+        targetTeachplan.setOrderby(tempOrderby);
+        boolean success = updateById(originTeachplan) && updateById(targetTeachplan);
+        String msg = "";
+        if(type == 0)
+            msg = "上移";
+        else if (type == 1) {
+            msg = "下移";
+        }
+
+        if(!success) {
+            throw new DatabaseOperateException(msg + "教学计划失败");
+        }
+
+        return Result.ok(msg +"成功");
     }
 
 
