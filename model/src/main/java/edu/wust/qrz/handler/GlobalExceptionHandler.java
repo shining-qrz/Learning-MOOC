@@ -11,6 +11,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @Slf4j
 @RestControllerAdvice
@@ -26,6 +27,18 @@ public class GlobalExceptionHandler {
     public Result handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error("Spring参数校验抛出: {}", e.getMessage());
         return Result.fail(400,"参数校验失败: " + e.getBindingResult().getFieldError().getDefaultMessage());
+    }
+
+    /**
+     * 处理请求参数缺失异常
+     * @param e 请求参数缺失异常
+     * @return Result对象，包含错误信息
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public Result handleMissingServletRequestPartException(MissingServletRequestPartException e) {
+        log.error("请求参数缺失异常抛出: {}", e.getMessage());
+        return Result.fail(400, "请求参数缺失: " + e.getRequestPartName());
     }
 
     /**
