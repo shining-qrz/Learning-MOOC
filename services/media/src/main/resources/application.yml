@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: service-media
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/MOOC_media?useUnicode=true&characterEncoding=UTF-8&useSSL=false
+    username: root
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+server:
+  port: 8002

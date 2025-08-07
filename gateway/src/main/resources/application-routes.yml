@@ -15,3 +15,10 @@ spring:
             - Path=/api/services/system/**
           filters:
             - RewritePath=/api/services/system/?(?<segment>.*), /$\{segment}
+
+        - id: service-media
+          uri: lb://service-media
+          predicates:
+            - Path=/api/services/media/**
+          filters:
+            - RewritePath=/api/services/media/?(?<segment>.*), /$\{segment}
