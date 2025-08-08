@@ -14,4 +14,6 @@ import java.security.NoSuchAlgorithmException;
 
 public interface MediaFilesService extends IService<MediaFiles> {
     Result uploadCourseFile(Long companyId, MultipartFile file, @Valid UploadFileDTO uploadFileDTO) throws IOException, ServerException, InsufficientDataException, ErrorResponseException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException;
+
+    void saveFileToDB(MediaFiles mediaFile) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException;
 }

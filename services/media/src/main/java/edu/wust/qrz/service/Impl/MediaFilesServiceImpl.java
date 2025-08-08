@@ -12,14 +12,16 @@ import edu.wust.qrz.service.MediaFilesService;
 import io.minio.MinioClient;
 import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
-import io.minio.UploadObjectArgs;
+import io.minio.RemoveObjectArgs;
 import io.minio.errors.*;
 import jakarta.annotation.Resource;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeanUtils;
-import org.springframework.boot.autoconfigure.web.format.DateTimeFormatters;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -37,9 +39,14 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
     @Resource
     private MinioClient minioClient;
 
-    @Transactional
+    @Lazy
+    @Resource
+    private MediaFilesService proxy;
+
     @Override
     public Result uploadCourseFile(Long companyId, MultipartFile file, UploadFileDTO uploadFileDTO) throws IOException, ServerException, InsufficientDataException, ErrorResponseException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+//        System.out.println("uploadCourseFile事务是否激活: " + TransactionSynchronizationManager.isActualTransactionActive());
+//        long txStart = System.currentTimeMillis();
         if(file == null || file.isEmpty()) {
             throw new BadRequestException("上传的文件不能为空");
         }
@@ -48,6 +55,41 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         String filePath = getFilePath(file,fileId);
         String url = MINIO_FILE_BUCKET + "/" + filePath;
 
+
+        uploadFileToMinIO(file, filePath);
+
+        //构建实体对象
+        MediaFiles mediaFile = getMediaFile(companyId, file, uploadFileDTO, fileId, filePath, url);
+
+        //代理对象调用，优化事务处理
+        proxy.saveFileToDB(mediaFile);
+
+//        long txEnd = System.currentTimeMillis();
+//        System.out.println("接口耗时(ms): " + (txEnd - txStart));
+
+        return Result.ok("上传成功");
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveFileToDB(MediaFiles mediaFile) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+//        System.out.println("事务是否激活: " + TransactionSynchronizationManager.isActualTransactionActive());
+//        long txStart = System.currentTimeMillis();
+        //存入数据库
+        try {
+            save(mediaFile);
+        }catch (Exception e){
+            //确保Minio与数据库信息一致
+            minioClient.removeObject(RemoveObjectArgs.builder()
+                    .bucket(MINIO_FILE_BUCKET)
+                    .object(mediaFile.getFilePath())
+                    .build());
+            throw new DatabaseOperateException("文件信息保存失败");
+        }
+//        long txEnd = System.currentTimeMillis();
+//        System.out.println("数据库事务耗时(ms): " + (txEnd - txStart));
+    }
+
+    public void uploadFileToMinIO(MultipartFile file, String filePath) throws InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, ServerException, XmlParserException, InsufficientDataException, ErrorResponseException, InternalException {
         //将文件上传至minio
         ObjectWriteResponse objectWriteResponse = minioClient.putObject(PutObjectArgs
                 .builder()
@@ -59,17 +101,6 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         if(objectWriteResponse==null) {
             throw new InternalException("文件上传失败", null);
         }
-
-        //构建实体对象
-        MediaFiles mediaFile = getMediaFile(companyId, file, uploadFileDTO, fileId, filePath, url);
-
-        //存入数据库
-        boolean success = save(mediaFile);
-        if(!success) {
-            throw new DatabaseOperateException("文件信息保存失败");
-        }
-
-        return Result.ok("上传成功");
     }
 
     @NotNull
