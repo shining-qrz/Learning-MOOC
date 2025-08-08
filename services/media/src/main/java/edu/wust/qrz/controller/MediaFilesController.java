@@ -1,6 +1,7 @@
 package edu.wust.qrz.controller;
 
 import edu.wust.qrz.common.Result;
+import edu.wust.qrz.dto.media.QueryMediaParamsDto;
 import edu.wust.qrz.dto.media.UploadFileDTO;
 import edu.wust.qrz.service.MediaFilesService;
 import io.minio.errors.*;
@@ -22,12 +23,26 @@ public class MediaFilesController {
     @Resource
     private MediaFilesService mediaFilesService;
 
+    /**
+     * 上传课程文件
+     * @param companyId 公司ID
+     * @param file 上传的文件
+     * @param uploadFileDTO 上传文件的DTO对象，包含文件相关信息
+     * @return 上传结果
+    **/
     @PostMapping(value = "/upload/coursefile" , consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result uploadCourseFile(@RequestParam("companyId") Long companyId,
                                    @RequestPart(value = "file") MultipartFile file,
                                    @Valid @ModelAttribute UploadFileDTO uploadFileDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
-
         return mediaFilesService.uploadCourseFile(companyId, file, uploadFileDTO);
+    }
+
+    @PostMapping("/files/{companyId}")
+    public Result getFilesByPage(@PathVariable("companyId") Long companyId,
+                                 @RequestParam("pageNum") Integer pageNum,
+                                 @RequestParam("pageSize") Integer pageSize,
+                                 @RequestBody(required = false) QueryMediaParamsDto queryMediaParamsDto){
+        return mediaFilesService.getFilesByPage(companyId, pageNum, pageSize, queryMediaParamsDto);
     }
 
 }

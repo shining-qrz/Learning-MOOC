@@ -1,8 +1,11 @@
 package edu.wust.qrz.service.Impl;
 
 import cn.hutool.core.lang.UUID;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.wust.qrz.common.Result;
+import edu.wust.qrz.dto.media.QueryMediaParamsDto;
 import edu.wust.qrz.dto.media.UploadFileDTO;
 import edu.wust.qrz.entity.media.MediaFiles;
 import edu.wust.qrz.exception.BadRequestException;
@@ -87,6 +90,43 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         }
 //        long txEnd = System.currentTimeMillis();
 //        System.out.println("数据库事务耗时(ms): " + (txEnd - txStart));
+    }
+
+    @Override
+    public Result getFilesByPage(Long companyId, Integer pageNum, Integer pageSize, QueryMediaParamsDto queryMediaParamsDto) {
+        if(companyId == null || companyId <= 0) {
+            throw new BadRequestException("公司ID不能为空或负数");
+        }
+
+        if (pageNum == null || pageNum <= 0 || pageSize == null || pageSize <= 0) {
+            throw new BadRequestException("页码或每页记录数不能为空或负数");
+        }
+
+        Page<MediaFiles> page = new Page<>(pageNum, pageSize);
+        QueryWrapper<MediaFiles> mediaFilesQueryWrapper = getMediaFilesQueryWrapper(companyId, queryMediaParamsDto);
+
+        Page<MediaFiles> pageResult = page(page, mediaFilesQueryWrapper);
+
+        return Result.ok("查询成功", pageResult);
+    }
+
+    @NotNull
+    private static QueryWrapper<MediaFiles> getMediaFilesQueryWrapper(Long companyId, QueryMediaParamsDto queryMediaParamsDto) {
+        QueryWrapper<MediaFiles> mediaFilesQueryWrapper = new QueryWrapper<>();
+        mediaFilesQueryWrapper.eq("company_id", companyId);
+
+        if(queryMediaParamsDto != null) {
+            if (queryMediaParamsDto.getFilename() != null && !queryMediaParamsDto.getFilename().isEmpty()) {
+                mediaFilesQueryWrapper.like("filename", queryMediaParamsDto.getFilename());
+            }
+            if (queryMediaParamsDto.getFileType() != null && !queryMediaParamsDto.getFileType().isEmpty()) {
+                mediaFilesQueryWrapper.eq("file_type", queryMediaParamsDto.getFileType());
+            }
+            if (queryMediaParamsDto.getAuditStatus() != null && !queryMediaParamsDto.getAuditStatus().isEmpty()) {
+                mediaFilesQueryWrapper.eq("audit_status", queryMediaParamsDto.getAuditStatus());
+            }
+        }
+        return mediaFilesQueryWrapper;
     }
 
     public void uploadFileToMinIO(MultipartFile file, String filePath) throws InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, ServerException, XmlParserException, InsufficientDataException, ErrorResponseException, InternalException {
