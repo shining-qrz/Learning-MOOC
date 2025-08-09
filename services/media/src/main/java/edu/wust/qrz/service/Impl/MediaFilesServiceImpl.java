@@ -1,6 +1,7 @@
 package edu.wust.qrz.service.Impl;
 
 import cn.hutool.core.lang.UUID;
+import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -54,7 +56,11 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
             throw new BadRequestException("上传的文件不能为空");
         }
 
-        String fileId = UUID.randomUUID().toString();
+        //md5文件签名
+        String fileId = DigestUtils.md5DigestAsHex(file.getInputStream());
+        if(fileId.isEmpty()) {
+            throw new BadRequestException("文件签名生成失败");
+        }
         String filePath = getFilePath(file,fileId);
         String url = MINIO_FILE_BUCKET + "/" + filePath;
 
@@ -77,6 +83,10 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
     public void saveFileToDB(MediaFiles mediaFile) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
 //        System.out.println("事务是否激活: " + TransactionSynchronizationManager.isActualTransactionActive());
 //        long txStart = System.currentTimeMillis();
+        long count = count(new QueryWrapper<MediaFiles>().eq("id", mediaFile.getId()));
+        if(count > 0) {
+            throw new BadRequestException("文件已存在");
+        }
         //存入数据库
         try {
             save(mediaFile);
