@@ -1,7 +1,8 @@
 package edu.wust.qrz.controller;
 
 import edu.wust.qrz.common.Result;
-import edu.wust.qrz.dto.media.QueryMediaParamsDto;
+import edu.wust.qrz.dto.media.MultipartFileCompleteDTO;
+import edu.wust.qrz.dto.media.QueryMediaParamsDTO;
 import edu.wust.qrz.dto.media.UploadFileDTO;
 import edu.wust.qrz.dto.media.UploadInitDTO;
 import edu.wust.qrz.service.MediaFilesService;
@@ -50,14 +51,24 @@ public class MediaFilesController {
     public Result getFilesByPage(@PathVariable("companyId") Long companyId,
                                  @RequestParam("pageNum") Integer pageNum,
                                  @RequestParam("pageSize") Integer pageSize,
-                                 @RequestBody(required = false) QueryMediaParamsDto queryMediaParamsDto){
+                                 @RequestBody(required = false) QueryMediaParamsDTO queryMediaParamsDto){
         return mediaFilesService.getFilesByPage(companyId, pageNum, pageSize, queryMediaParamsDto);
     }
 
 
+    /**
+     * 大文件分片上传任务初始化
+     * @param uploadInitDTO 上传初始化DTO，包含文件名、文件大小和文件类型等信息
+     * @return 上传初始化结果
+     */
     @PostMapping("upload/init")
     public Result initUpload(@Valid @RequestBody UploadInitDTO uploadInitDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
         return mediaFilesService.initUpload(uploadInitDTO);
+    }
+
+    @PostMapping("/upload/complete")
+    public Result completeUpload(@Valid @RequestBody MultipartFileCompleteDTO multipartFileCompleteDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+        return mediaFilesService.completeUpload(multipartFileCompleteDTO);
     }
 
 

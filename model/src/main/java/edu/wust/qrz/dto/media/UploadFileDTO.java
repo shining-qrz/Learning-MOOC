@@ -2,6 +2,9 @@ package edu.wust.qrz.dto.media;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import org.xml.sax.helpers.AttributeListImpl;
+
+import java.util.List;
 
 @Data
 public class UploadFileDTO {

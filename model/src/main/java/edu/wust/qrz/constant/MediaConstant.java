@@ -2,7 +2,7 @@ package edu.wust.qrz.constant;
 
 public class MediaConstant {
     //大文件分片最大值--10MB
-    public static final Long MINIO_FILE_MULTIPART_SIZE_MAX = 10 * 1024 * 1024L;
+    public static final Long MINIO_FILE_MULTIPART_SIZE_MAX = 30 * 1024 * 1024L;
 
     public static final String MINIO_FILE_BUCKET = "files";
     public static final String MINIO_VIDEO_BUCKET = "videos";

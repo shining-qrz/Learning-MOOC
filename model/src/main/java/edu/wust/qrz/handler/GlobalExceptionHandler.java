@@ -3,6 +3,7 @@ package edu.wust.qrz.handler;
 import edu.wust.qrz.common.Result;
 import edu.wust.qrz.exception.BadRequestException;
 import edu.wust.qrz.exception.DatabaseOperateException;
+import edu.wust.qrz.exception.MinioOperateException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,18 @@ public class GlobalExceptionHandler {
     public Result handleMissingServletRequestPartException(MissingServletRequestPartException e) {
         log.error("请求参数缺失异常抛出: {}", e.getMessage());
         return Result.fail(400, "请求参数缺失: " + e.getRequestPartName());
+    }
+
+    /**
+     * 处理Minio操作异常
+     * @param e
+     * @return
+     */
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(MinioOperateException.class)
+    public Result handleMinioOperateException(MinioOperateException e) {
+        log.error("MinIO操作异常抛出: {}", e.getMessage(), e);
+        return Result.fail(500, "MinIO操作异常: " + e.getMessage());
     }
 
     /**

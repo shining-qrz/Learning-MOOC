@@ -1,17 +1,18 @@
 package edu.wust.qrz.service.Impl;
 
-import cn.hutool.core.lang.UUID;
-import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.wust.qrz.common.Result;
-import edu.wust.qrz.dto.media.QueryMediaParamsDto;
+import edu.wust.qrz.dto.media.MultipartFileCompleteDTO;
+import edu.wust.qrz.dto.media.QueryMediaParamsDTO;
 import edu.wust.qrz.dto.media.UploadFileDTO;
 import edu.wust.qrz.dto.media.UploadInitDTO;
+import edu.wust.qrz.entity.media.EtagObject;
 import edu.wust.qrz.entity.media.MediaFiles;
 import edu.wust.qrz.exception.BadRequestException;
 import edu.wust.qrz.exception.DatabaseOperateException;
+import edu.wust.qrz.exception.MinioOperateException;
 import edu.wust.qrz.mapper.MediaFilesMapper;
 import edu.wust.qrz.service.MediaFilesService;
 import edu.wust.qrz.vo.media.UploadInitVO;
@@ -20,23 +21,17 @@ import io.minio.errors.*;
 import jakarta.annotation.Resource;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedUploadPartRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.UploadPartPresignRequest;
 
 import java.io.IOException;
@@ -47,7 +42,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 import static edu.wust.qrz.constant.MediaConstant.*;
 
@@ -122,7 +117,7 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
     }
 
     @Override
-    public Result getFilesByPage(Long companyId, Integer pageNum, Integer pageSize, QueryMediaParamsDto queryMediaParamsDto) {
+    public Result getFilesByPage(Long companyId, Integer pageNum, Integer pageSize, QueryMediaParamsDTO queryMediaParamsDto) {
         if(companyId == null || companyId <= 0) {
             throw new BadRequestException("公司ID不能为空或负数");
         }
@@ -169,7 +164,7 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
             //生成预签名上传请求
             PresignedUploadPartRequest presignedUploadPartRequest = s3Presigner.presignUploadPart(UploadPartPresignRequest.builder()
                     .uploadPartRequest(uploadPartRequest)
-                    .signatureDuration(Duration.ofMinutes(30))
+                    .signatureDuration(Duration.ofDays(1))
                     .build());
 
             //获取预签名URL
@@ -186,8 +181,38 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         return Result.ok("初始化分片任务成功", uploadInitVO);
     }
 
+    @Override
+    public Result completeUpload(MultipartFileCompleteDTO multipartFileCompleteDTO) {
+        String uploadId = multipartFileCompleteDTO.getUploadId();
+        String fileId = multipartFileCompleteDTO.getFileId();
+        List<EtagObject> etagObjects = multipartFileCompleteDTO.getEtags();
+
+        //操作Minio进行分片的合成
+        CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
+                .bucket(MINIO_VIDEO_BUCKET)
+                .key(fileId + ".mp4")
+                .uploadId(uploadId)
+                .multipartUpload(CompletedMultipartUpload.builder()
+                        .parts(etagObjects.stream()
+                                .map(etagObject -> CompletedPart.builder()
+                                        .partNumber(etagObject.getPartNumber())
+                                        .eTag(etagObject.getETag())
+                                        .build()).toList())
+                        .build())
+                .build();
+
+        try {
+            s3Client.completeMultipartUpload(completeMultipartUploadRequest);
+        } catch (Exception e) {
+            throw new MinioOperateException("合并分片文件失败", e);
+        }
+
+        return Result.ok("合并分片文件成功");
+        //TODO 将文件信息写入数据库
+    }
+
     @NotNull
-    private static QueryWrapper<MediaFiles> getMediaFilesQueryWrapper(Long companyId, QueryMediaParamsDto queryMediaParamsDto) {
+    private static QueryWrapper<MediaFiles> getMediaFilesQueryWrapper(Long companyId, QueryMediaParamsDTO queryMediaParamsDto) {
         QueryWrapper<MediaFiles> mediaFilesQueryWrapper = new QueryWrapper<>();
         mediaFilesQueryWrapper.eq("company_id", companyId);
 

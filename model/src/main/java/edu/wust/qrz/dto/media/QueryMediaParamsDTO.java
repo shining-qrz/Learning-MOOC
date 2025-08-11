@@ -10,7 +10,7 @@ import lombok.Data;
  */
 @Data
 
-public class QueryMediaParamsDto {
+public class QueryMediaParamsDTO {
 
     private String filename;
 

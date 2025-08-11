@@ -2,7 +2,8 @@ package edu.wust.qrz.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import edu.wust.qrz.common.Result;
-import edu.wust.qrz.dto.media.QueryMediaParamsDto;
+import edu.wust.qrz.dto.media.MultipartFileCompleteDTO;
+import edu.wust.qrz.dto.media.QueryMediaParamsDTO;
 import edu.wust.qrz.dto.media.UploadFileDTO;
 import edu.wust.qrz.dto.media.UploadInitDTO;
 import edu.wust.qrz.entity.media.MediaFiles;
@@ -19,7 +20,9 @@ public interface MediaFilesService extends IService<MediaFiles> {
 
     void saveFileToDB(MediaFiles mediaFile) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException;
 
-    Result getFilesByPage(Long companyId,Integer pageNum, Integer pageSize, QueryMediaParamsDto queryMediaParamsDto);
+    Result getFilesByPage(Long companyId,Integer pageNum, Integer pageSize, QueryMediaParamsDTO queryMediaParamsDto);
 
     Result initUpload(@Valid UploadInitDTO uploadInitDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException;
+
+    Result completeUpload(@Valid MultipartFileCompleteDTO multipartFileCompleteDTO);
 }

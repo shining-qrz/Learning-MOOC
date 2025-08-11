@@ -12,7 +12,7 @@ public class MediaTest {
     @Test
     public void FileChunkTest() throws FileNotFoundException {
         String filePath = "D:\\Bilibili\\Media\\testVideo.mp4";
-        int chunkSize = 10 * 1024 * 1024;
+        int chunkSize = 30 * 1024 * 1024;
         File file = new File(filePath);
         try (InputStream in = new FileInputStream(file)) {
             byte[] buffer = new byte[chunkSize];
