@@ -3,6 +3,7 @@ package edu.wust.qrz.controller;
 import edu.wust.qrz.common.Result;
 import edu.wust.qrz.dto.media.QueryMediaParamsDto;
 import edu.wust.qrz.dto.media.UploadFileDTO;
+import edu.wust.qrz.dto.media.UploadInitDTO;
 import edu.wust.qrz.service.MediaFilesService;
 import io.minio.errors.*;
 import jakarta.annotation.Resource;
@@ -37,6 +38,14 @@ public class MediaFilesController {
         return mediaFilesService.uploadCourseFile(companyId, file, uploadFileDTO);
     }
 
+    /**
+     * 分页查询媒资文件
+     * @param companyId 公司ID
+     * @param pageNum 当前页码
+     * @param pageSize 每页大小
+     * @param queryMediaParamsDto 查询媒资文件的参数DTO，包含文件名、文件类型、审核状态等信息
+     * @return 分页查询结果
+     */
     @PostMapping("/files/{companyId}")
     public Result getFilesByPage(@PathVariable("companyId") Long companyId,
                                  @RequestParam("pageNum") Integer pageNum,
@@ -44,5 +53,13 @@ public class MediaFilesController {
                                  @RequestBody(required = false) QueryMediaParamsDto queryMediaParamsDto){
         return mediaFilesService.getFilesByPage(companyId, pageNum, pageSize, queryMediaParamsDto);
     }
+
+
+    @PostMapping("upload/init")
+    public Result initUpload(@Valid @RequestBody UploadInitDTO uploadInitDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+        return mediaFilesService.initUpload(uploadInitDTO);
+    }
+
+
 
 }

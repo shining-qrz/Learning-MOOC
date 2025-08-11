@@ -8,19 +8,19 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.wust.qrz.common.Result;
 import edu.wust.qrz.dto.media.QueryMediaParamsDto;
 import edu.wust.qrz.dto.media.UploadFileDTO;
+import edu.wust.qrz.dto.media.UploadInitDTO;
 import edu.wust.qrz.entity.media.MediaFiles;
 import edu.wust.qrz.exception.BadRequestException;
 import edu.wust.qrz.exception.DatabaseOperateException;
 import edu.wust.qrz.mapper.MediaFilesMapper;
 import edu.wust.qrz.service.MediaFilesService;
-import io.minio.MinioClient;
-import io.minio.ObjectWriteResponse;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
+import edu.wust.qrz.vo.media.UploadInitVO;
+import io.minio.*;
 import io.minio.errors.*;
 import jakarta.annotation.Resource;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -28,15 +28,28 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedUploadPartRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.UploadPartPresignRequest;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
-import static edu.wust.qrz.constant.MediaConstant.MEDIA_OBJECT_AUDIT_TRUE;
-import static edu.wust.qrz.constant.MediaConstant.MINIO_FILE_BUCKET;
+import static edu.wust.qrz.constant.MediaConstant.*;
 
 @Service
 public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFiles> implements MediaFilesService {
@@ -47,6 +60,12 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
     @Lazy
     @Resource
     private MediaFilesService proxy;
+
+    @Resource
+    private S3Client s3Client;
+
+    @Resource
+    private S3Presigner s3Presigner;
 
     @Override
     public Result uploadCourseFile(Long companyId, MultipartFile file, UploadFileDTO uploadFileDTO) throws IOException, ServerException, InsufficientDataException, ErrorResponseException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
@@ -118,6 +137,53 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         Page<MediaFiles> pageResult = page(page, mediaFilesQueryWrapper);
 
         return Result.ok("查询成功", pageResult);
+    }
+
+    @Override
+    public Result initUpload(UploadInitDTO uploadInitDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+        String filename = uploadInitDTO.getFilename();
+        Long fileSize = uploadInitDTO.getFileSize();
+        String fileType = uploadInitDTO.getFileType();
+
+        String fileId = DigestUtils.md5DigestAsHex(filename.getBytes(StandardCharsets.UTF_8));
+        CreateMultipartUploadResponse multipartUpload = s3Client.createMultipartUpload(CreateMultipartUploadRequest
+                .builder()
+                .bucket(MINIO_VIDEO_BUCKET)
+                .key(fileId + "." + fileType)
+                .build());
+        String uploadId = multipartUpload.uploadId();
+
+        Integer totalPart = (int) Math.ceil((double) fileSize / MINIO_FILE_MULTIPART_SIZE_MAX);
+
+        ArrayList<String> presignUrls = new ArrayList<>();
+
+        for (int partNum = 1; partNum <= totalPart; partNum++) {
+            //构建uploadPartRequest
+            UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                    .uploadId(uploadId)//指定上传任务id
+                    .partNumber(partNum)//指定分片索引
+                    .bucket(MINIO_VIDEO_BUCKET)//指定桶
+                    .key(fileId + "." + fileType)//指定Minio对象名
+                    .build();
+
+            //生成预签名上传请求
+            PresignedUploadPartRequest presignedUploadPartRequest = s3Presigner.presignUploadPart(UploadPartPresignRequest.builder()
+                    .uploadPartRequest(uploadPartRequest)
+                    .signatureDuration(Duration.ofMinutes(30))
+                    .build());
+
+            //获取预签名URL
+            String presignUrl = presignedUploadPartRequest.url().toString();
+            presignUrls.add(presignUrl);
+        }
+
+        //构建VO返回对象
+        UploadInitVO uploadInitVO = new UploadInitVO();
+        uploadInitVO.setUploadId(uploadId);
+        uploadInitVO.setTotalPart(totalPart);
+        uploadInitVO.setPresignedUrls(presignUrls);
+
+        return Result.ok("初始化分片任务成功", uploadInitVO);
     }
 
     @NotNull
