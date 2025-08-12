@@ -32,21 +32,14 @@ public class MediaProcess implements Serializable {
     private String fileId;
 
     /**
-     * 文件名称
-     */
-    private String filename;
-
-    /**
      * 存储源
      */
     private String bucket;
 
-    private String filePath;
-
     /**
-     * 状态,1:未处理，视频处理完成更新为2
+     * 存储路径
      */
-    private String status;
+    private String filePath;
 
     /**
      * 上传时间
@@ -55,24 +48,9 @@ public class MediaProcess implements Serializable {
     private LocalDateTime createDate;
 
     /**
-     * 完成时间
+     * 分片索引
      */
-    private LocalDateTime finishDate;
-
-    /**
-     * 媒资文件访问地址
-     */
-    private String url;
-
-    /**
-     * 失败原因
-     */
-    private String errormsg;
-
-    /**
-     * 失败次数
-     */
-    private int failCount;
+    private Integer partNumber;
 
 
 

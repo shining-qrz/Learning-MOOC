@@ -24,5 +24,5 @@ public interface MediaFilesService extends IService<MediaFiles> {
 
     Result initUpload(@Valid UploadInitDTO uploadInitDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException;
 
-    Result completeUpload(@Valid MultipartFileCompleteDTO multipartFileCompleteDTO);
+    Result completeUpload(@Valid MultipartFileCompleteDTO multipartFileCompleteDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException;
 }

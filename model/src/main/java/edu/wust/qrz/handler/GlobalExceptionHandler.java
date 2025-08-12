@@ -93,7 +93,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DatabaseOperateException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result handleDatabaseOperateException(DatabaseOperateException e){
-        log.error("数据库操作异常抛出，{}", e.getMessage());
+        log.error("数据库操作异常抛出，{}", e.getMessage(), e);
         return Result.fail("数据库操作异常：" + e.getMessage());
     }
 

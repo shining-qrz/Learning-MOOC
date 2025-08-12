@@ -77,12 +77,13 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         }
         String filePath = getFilePath(file,fileId);
         String url = MINIO_FILE_BUCKET + "/" + filePath;
+        long fileSize = file.getSize();
 
 
         uploadFileToMinIO(file, filePath);
 
         //构建实体对象
-        MediaFiles mediaFile = getMediaFile(companyId, file, uploadFileDTO, fileId, filePath, url);
+        MediaFiles mediaFile = getMediaFile(companyId, fileSize, uploadFileDTO, fileId, filePath, url);
 
         //代理对象调用，优化事务处理
         proxy.saveFileToDB(mediaFile);
@@ -101,13 +102,21 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         if(count > 0) {
             throw new BadRequestException("文件已存在");
         }
+
+        //依据文件类型区分bucket
+        String bucket = "";
+        if(mediaFile.getFileType().equals(MEDIA_TYPE_VIDEO))
+            bucket = MINIO_VIDEO_BUCKET;
+        else if(mediaFile.getFileType().equals(MEDIA_TYPE_PHOTO))
+            bucket = MINIO_FILE_BUCKET;
+
         //存入数据库
         try {
             save(mediaFile);
         }catch (Exception e){
             //确保Minio与数据库信息一致
             minioClient.removeObject(RemoveObjectArgs.builder()
-                    .bucket(MINIO_FILE_BUCKET)
+                    .bucket(bucket)
                     .object(mediaFile.getFilePath())
                     .build());
             throw new DatabaseOperateException("文件信息保存失败");
@@ -182,10 +191,14 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
     }
 
     @Override
-    public Result completeUpload(MultipartFileCompleteDTO multipartFileCompleteDTO) {
+    public Result completeUpload(MultipartFileCompleteDTO multipartFileCompleteDTO) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
         String uploadId = multipartFileCompleteDTO.getUploadId();
         String fileId = multipartFileCompleteDTO.getFileId();
         List<EtagObject> etagObjects = multipartFileCompleteDTO.getEtags();
+
+        if(etagObjects.isEmpty()) {
+            throw new BadRequestException("分片信息不能为空");
+        }
 
         //操作Minio进行分片的合成
         CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
@@ -207,8 +220,17 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
             throw new MinioOperateException("合并分片文件失败", e);
         }
 
-        return Result.ok("合并分片文件成功");
-        //TODO 将文件信息写入数据库
+        //将文件信息写入数据库
+        Long companyId = multipartFileCompleteDTO.getCompanyId();
+        Long fileSize = multipartFileCompleteDTO.getFileSize();
+        UploadFileDTO uploadFileDTO = new UploadFileDTO();
+        BeanUtils.copyProperties(multipartFileCompleteDTO, uploadFileDTO);
+        String filePath = fileId + ".mp4";
+        MediaFiles mediaFile = getMediaFile(companyId,fileSize,uploadFileDTO, fileId, filePath, MINIO_VIDEO_BUCKET + "/" + filePath);
+
+        proxy.saveFileToDB(mediaFile);
+
+        return Result.ok("分片上传成功");
     }
 
     @NotNull
@@ -230,8 +252,8 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         return mediaFilesQueryWrapper;
     }
 
+    //将文件上传至minio
     public void uploadFileToMinIO(MultipartFile file, String filePath) throws InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, ServerException, XmlParserException, InsufficientDataException, ErrorResponseException, InternalException {
-        //将文件上传至minio
         ObjectWriteResponse objectWriteResponse = minioClient.putObject(PutObjectArgs
                 .builder()
                 .bucket(MINIO_FILE_BUCKET)
@@ -244,19 +266,27 @@ public class MediaFilesServiceImpl extends ServiceImpl<MediaFilesMapper, MediaFi
         }
     }
 
+    //构建MediaFiles对象
     @NotNull
-    private static MediaFiles getMediaFile(Long companyId, MultipartFile file, UploadFileDTO uploadFileDTO, String fileId, String filePath, String url) {
+    private static MediaFiles getMediaFile(Long companyId, Long fileSize, UploadFileDTO uploadFileDTO, String fileId, String filePath, String url) {
+        //依据文件类型区分bucket
+        String bucket = "";
+        if(uploadFileDTO.getFileType().equals(MEDIA_TYPE_VIDEO))
+            bucket = MINIO_VIDEO_BUCKET;
+        else if(uploadFileDTO.getFileType().equals(MEDIA_TYPE_PHOTO))
+            bucket = MINIO_FILE_BUCKET;
+
         MediaFiles mediaFile = new MediaFiles();
         BeanUtils.copyProperties(uploadFileDTO, mediaFile);
         mediaFile.setId(fileId);
         mediaFile.setFileId(fileId);
         mediaFile.setCompanyId(companyId);
-        mediaFile.setBucket(MINIO_FILE_BUCKET);
+        mediaFile.setBucket(bucket);
         mediaFile.setFilePath(filePath);
         mediaFile.setUrl(url);
         mediaFile.setCreateDate(LocalDateTime.now());
         mediaFile.setAuditStatus(MEDIA_OBJECT_AUDIT_TRUE);
-        mediaFile.setFileSize(file.getSize());
+        mediaFile.setFileSize(fileSize);
         return mediaFile;
     }
 
